@@ -1,58 +1,29 @@
 # Chat Queue Runner
 
-Ekstensi Chrome sederhana untuk menjalankan daftar prompt di ChatGPT satu per satu. Prompt berikutnya baru dikirim setelah jawaban sempat mulai, berhenti, dan halaman stabil selama jeda yang ditentukan.
+Versi **0.2.0**. Folder ini adalah salah satu Runner 01–10 dan dapat dipasang langsung melalui **Load unpacked**.
+
+## Perilaku penting
+
+- Prompt dikirim satu per satu dan baru dianggap diterima setelah user-turn yang cocok muncul.
+- **Jeda** dan **Reset** membatalkan aksi yang belum diklik. Reset tidak membiarkan callback lama menghidupkan sesi baru.
+- Sesi terikat ke tab + identitas percakapan. Pindah chat membuat antrean dijeda.
+- Draf manual di composer tidak ditimpa.
+- Jawaban normal dicatat `completed`. Jawaban yang benar-benar terhenti dicatat `interrupted`, kegagalan eksplisit dicatat `failed`; keduanya lanjut ke prompt berikut setelah jeda.
+- Jika ChatGPT meminta **izin/konfirmasi**, antrean dijeda dan tombol izin tidak diklik otomatis.
+- Status pengiriman ambigu tidak dikirim ulang otomatis untuk menghindari prompt ganda.
+- Runner berbeda pada tab yang sama memakai lease + Web Locks. Jika tab sudah dikuasai runner lain, runner kedua dijeda.
+- Draf daftar prompt di popup disimpan terpisah dari antrean aktif.
 
 ## Instalasi
 
-1. Ekstrak ZIP jika Anda memakai paket ZIP.
-2. Buka `chrome://extensions` di Chrome.
-3. Aktifkan **Developer mode** di kanan atas.
-4. Klik **Load unpacked / Muat yang belum dipaketkan**.
-5. Pilih folder `chat-queue-runner` yang berisi `manifest.json`.
-6. Buka atau muat ulang `https://chatgpt.com/`.
+1. Ekstrak ZIP distribusi.
+2. Buka `chrome://extensions` dan aktifkan **Developer mode**.
+3. Klik **Load unpacked**.
+4. Pilih folder `chat-queue-runner-01` sampai `chat-queue-runner-10` yang ingin dipasang.
+5. Setelah update ekstensi, muat ulang tab ChatGPT sebelum menjalankan antrean.
 
-## Pemakaian
+## Batas yang perlu diketahui
 
-1. Buka percakapan ChatGPT yang akan digunakan.
-2. Klik ikon ekstensi **Chat Queue Runner**.
-3. Tempel beberapa pekerjaan. Setiap baris dianggap sebagai satu prompt; tekan Enter untuk membuat pekerjaan berikutnya.
-4. Atur jeda. Batas pekerjaan per sesi ditetapkan 100 prompt.
-5. Klik **Mulai**.
+Kompatibilitas selector ChatGPT dapat berubah karena UI web bukan API stabil. Pengujian otomatis repo memakai fixture/simulasi dan tidak sama dengan smoke test langsung di akun ChatGPT. Background tab yang ditidurkan Chrome, restart service worker, serta server launcher lokal perlu diuji lagi pada lingkungan pengguna.
 
-Contoh:
-
-```text
-Buat alur film untuk judul: Film A. Gunakan format proyek saya.
-Buat alur film untuk judul: Film B. Gunakan format proyek saya.
-Buat alur film untuk judul: Film C. Gunakan format proyek saya.
-```
-
-Baris kosong akan diabaikan. Karena Enter menjadi pemisah pekerjaan, satu prompt tidak dapat memakai beberapa baris pada versi ini.
-
-Jika jawaban sedang berjalan saat **Mulai** ditekan, ekstensi akan menunggunya selesai sebelum mengirim item pertama.
-
-## Pengaman
-
-- Tombol **Jeda** tersedia di popup dan indikator kecil di halaman.
-- Satu sesi hanya terikat ke satu tab ChatGPT, sehingga beberapa tab terbuka tidak menyebabkan prompt terkirim ganda.
-- Maksimal pekerjaan per sesi adalah 100 prompt.
-- Ekstensi menjeda antrean saat menemukan permintaan konfirmasi, tombol *Continue generating*, atau tombol *Try again*.
-- Daftar prompt dan progres hanya disimpan melalui penyimpanan lokal Chrome.
-
-## Batasan versi 0.1
-
-- Hanya ditujukan untuk ChatGPT Web (`chatgpt.com` dan alamat lama `chat.openai.com`). Ekstensi Chrome tidak dapat mengendalikan aplikasi Codex Desktop.
-- Deteksi bergantung pada struktur antarmuka ChatGPT. Jika OpenAI mengubah elemen halaman, selector di `content.js` mungkin perlu diperbarui.
-- Tab ChatGPT harus tetap terbuka. Chrome dapat memperlambat tab yang lama berada di latar belakang.
-- Tinjau hasil secara berkala. Jangan memakai antrean tanpa pengawasan untuk tindakan sensitif, pembayaran, penghapusan data, atau pengiriman ke pihak lain.
-
-## Struktur
-
-- `manifest.json` — konfigurasi Manifest V3.
-- `background.js` — mengikat satu sesi antrean ke satu tab agar tidak terkirim ganda.
-- `popup.html`, `popup.css`, `popup.js` — antarmuka antrean.
-- `content.js` — pengisian prompt, deteksi jawaban selesai, progres, dan pengaman.
-
-## Kompatibilitas UI terbaru
-
-Versi 0.1.7 mempertahankan fallback selector untuk UI ChatGPT Web terbaru, termasuk composer ProseMirror, `#composer-submit-button`, `form[data-chatgpt-composer]`, struktur `section[data-turn="assistant"]`, dan deteksi generasi berbasis `aria-busy`. Versi ini juga memperbaiki Reset agar benar-benar menghentikan runner, memverifikasi prompt benar-benar terkirim, dan menambah deteksi stabilitas jawaban sebelum antrean dilanjutkan.
+Endpoint launcher lokal `127.0.0.1` tetap dipertahankan untuk kompatibilitas. Payload baru dapat membawa `commandId` agar replay dapat ditolak; server launcher lama yang belum mengirim `commandId` tetap diterima tetapi tidak mendapat jaminan de-duplication end-to-end.
