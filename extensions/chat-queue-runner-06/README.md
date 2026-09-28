@@ -53,7 +53,6 @@ Jika jawaban sedang berjalan saat **Mulai** ditekan, ekstensi akan menunggunya s
 - `popup.html`, `popup.css`, `popup.js` — antarmuka antrean.
 - `content.js` — pengisian prompt, deteksi jawaban selesai, progres, dan pengaman.
 
-
 ## Kompatibilitas UI terbaru
 
-Versi 0.1.6 menambah fallback selector untuk UI ChatGPT Web terbaru, termasuk composer ProseMirror, `#composer-submit-button`, `form[data-chatgpt-composer]`, struktur `section[data-turn="assistant"]`, dan deteksi generasi berbasis `aria-busy`.
+Versi 0.1.7 mempertahankan fallback selector untuk UI ChatGPT Web terbaru, termasuk composer ProseMirror, `#composer-submit-button`, `form[data-chatgpt-composer]`, struktur `section[data-turn="assistant"]`, dan deteksi generasi berbasis `aria-busy`. Versi ini juga memperbaiki Reset agar benar-benar menghentikan runner, memverifikasi prompt benar-benar terkirim, dan menambah deteksi stabilitas jawaban sebelum antrean dilanjutkan.

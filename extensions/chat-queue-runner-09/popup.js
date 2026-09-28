@@ -1,7 +1,8 @@
 const STORAGE_KEYS = {
   queue: "cqr_queue",
   config: "cqr_config",
-  state: "cqr_state"
+  state: "cqr_state",
+  pendingReplacement: "cqr_pending_replacement"
 };
 
 const DEFAULT_CONFIG = {
@@ -161,9 +162,22 @@ pauseButton.addEventListener("click", async () => {
 
 resetButton.addEventListener("click", async () => {
   message.textContent = "";
+  let response = null;
+
   try {
-    await chrome.storage.local.remove(STORAGE_KEYS.state);
-    renderState(null);
+    response = await sendToOwnerTab({ type: "CQR_RESET" });
+  } catch (_error) {
+    // Jika tab sudah ditutup, storage lokal tetap dapat direset di bawah.
+  }
+
+  try {
+    await chrome.storage.local.remove(STORAGE_KEYS.pendingReplacement);
+    if (response?.ok) {
+      renderState(response.state);
+    } else {
+      await chrome.storage.local.remove(STORAGE_KEYS.state);
+      renderState(null);
+    }
   } catch (error) {
     message.textContent = error.message;
   }

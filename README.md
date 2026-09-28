@@ -4,9 +4,14 @@ Kumpulan 10 Chrome extension (Runner 01–10) untuk menjalankan antrean prompt s
 
 ## Versi
 
-Saat ini: **v0.1.6**
+Saat ini: **v0.1.7**
 
-Versi ini menambahkan kompatibilitas dengan struktur ChatGPT Web terbaru, termasuk fallback untuk composer, tombol kirim, deteksi turn assistant, dan status generasi.
+Perbaikan v0.1.7:
+- Reset sekarang benar-benar menghentikan runner di tab ChatGPT.
+- Prompt diverifikasi sudah diterima ChatGPT sebelum antrean maju, agar tidak menggantung atau mengirim ganda.
+- Penyelesaian jawaban memakai indikator selesai dan stabilitas teks sebagai fallback.
+- Runner tidak mengganggu jawaban manual yang sedang berjalan.
+- Widget Runner 01–10 punya ID/posisi terpisah bila beberapa runner aktif pada tab yang sama.
 
 ## Struktur
 

@@ -1,35 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Chat Queue Runner 07",
-  "version": "0.1.6",
-  "description": "Menjalankan antrean prompt satu per satu di ChatGPT Web, kompatibel dengan UI terbaru.",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs"
-  ],
-  "host_permissions": [
-    "https://chatgpt.com/*",
-    "https://chat.openai.com/*",
-    "http://127.0.0.1/*"
-  ],
-  "action": {
-    "default_title": "Chat Queue Runner 07",
-    "default_popup": "popup.html"
-  },
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://chatgpt.com/*",
-        "https://chat.openai.com/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ]
+  "version": "0.1.7",
+  "description": "Menjalankan antrean prompt satu per satu di ChatGPT Web, dengan verifikasi kirim dan deteksi selesai yang lebih aman.",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*", "http://127.0.0.1/*"],
+  "action": {"default_title": "Chat Queue Runner 07", "default_popup": "popup.html"},
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{"matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"], "js": ["content.js"], "run_at": "document_idle"}]
 }

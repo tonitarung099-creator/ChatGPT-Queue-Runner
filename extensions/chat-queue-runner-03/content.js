@@ -21,6 +21,8 @@
   const MIN_RESPONSE_AGE_MS = 1500;
   const COMPOSER_WAIT_TIMEOUT_MS = 60000;
   const CONTINUE_POLL_INTERVAL_MS = 4000;
+  const SEND_ACCEPT_TIMEOUT_MS = 12000;
+  const RESPONSE_STABLE_POLLS = 3;
 
   let queue = [];
   let config = { ...DEFAULT_CONFIG };
@@ -73,6 +75,18 @@
       if (match) return match;
     }
     return null;
+  }
+
+  function normalizeText(value) {
+    return String(value || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function getElementText(element) {
+    if (!element) return "";
+    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) {
+      return element.value || "";
+    }
+    return element.innerText || element.textContent || "";
   }
 
   function getComposer() {
@@ -132,6 +146,46 @@
 
   function getAssistantCount() {
     return getAssistantTurns().length;
+  }
+
+  function getUserTurns() {
+    const selectors = [
+      "section[data-turn='user']",
+      "[data-testid^='conversation-turn-'][data-turn='user']",
+      "[data-testid^='conversation-turn-'][data-message-author-role='user']",
+      "[data-turn-key]:has([data-user-message-bubble])",
+      "[data-message-author-role='user']"
+    ];
+
+    for (const selector of selectors) {
+      const matches = [...document.querySelectorAll(selector)];
+      if (matches.length) return matches;
+    }
+    return [];
+  }
+
+  function getUserCount() {
+    return getUserTurns().length;
+  }
+
+  function getLatestAssistantTurn() {
+    const turns = getAssistantTurns();
+    return turns.length ? turns[turns.length - 1] : null;
+  }
+
+  function getLatestAssistantResponseText() {
+    const turn = getLatestAssistantTurn();
+    if (!turn) return "";
+    const body = turn.querySelector?.("[data-message-author-role='assistant']") || turn;
+    return normalizeText(getElementText(body));
+  }
+
+  function hasCompletionAction() {
+    const turn = getLatestAssistantTurn();
+    if (!turn) return false;
+    return Boolean(turn.querySelector?.(
+      "button[data-testid='copy-turn-action-button'], [data-testid*='copy-turn-action'], .turn-action-controls button"
+    ));
   }
 
   function isGenerating() {
@@ -230,6 +284,18 @@
     return null;
   }
 
+  async function waitForSendAcceptance({ composer, userCountBefore, assistantCountBefore }, timeoutMs = SEND_ACCEPT_TIMEOUT_MS) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      if (getUserCount() > userCountBefore) return true;
+      if (getAssistantCount() > assistantCountBefore) return true;
+      if (isGenerating()) return true;
+      if (!composer?.isConnected || normalizeText(getElementText(composer)) === "") return true;
+      await sleep(150);
+    }
+    return false;
+  }
+
   async function sendNextPrompt() {
     if (state.status !== "running" || state.inFlight || state.nextIndex >= queue.length) return;
 
@@ -245,20 +311,31 @@
     const queueIndex = state.nextIndex;
     const prompt = queue[queueIndex];
     const assistantCountBefore = getAssistantCount();
+    const userCountBefore = getUserCount();
 
     setComposerText(composer, prompt);
+    const composerText = normalizeText(getElementText(composer));
+    if (!composerText) throw new Error("Prompt gagal dimasukkan ke kotak ChatGPT");
+
     const sendButton = await waitForSendButton();
     if (!sendButton) throw new Error("Tombol kirim ChatGPT tidak aktif");
 
     sendButton.click();
+    const accepted = await waitForSendAcceptance({ composer, userCountBefore, assistantCountBefore });
+    if (!accepted) {
+      throw new Error("ChatGPT tidak mengonfirmasi prompt terkirim; antrean dijeda agar tidak mengirim ganda");
+    }
+
     state.nextIndex += 1;
     state.inFlight = {
       external: false,
       queueIndex,
       sentAt: Date.now(),
       assistantCountBefore,
-      sawGenerating: false,
-      idleSince: null
+      sawGenerating: isGenerating(),
+      idleSince: null,
+      lastResponseText: "",
+      stableResponsePolls: 0
     };
     await persistState();
   }
@@ -300,6 +377,20 @@
       }
 
       if (!state.inFlight) {
+        if (isGenerating()) {
+          state.inFlight = {
+            external: true,
+            queueIndex: null,
+            sentAt: Date.now(),
+            assistantCountBefore: Math.max(0, getAssistantCount() - 1),
+            sawGenerating: true,
+            idleSince: null,
+            lastResponseText: "",
+            stableResponsePolls: 0
+          };
+          await persistState();
+          return;
+        }
         if (state.nextIndex >= queue.length) {
           state.status = "completed";
           await persistState();
@@ -313,14 +404,36 @@
       if (generating) {
         state.inFlight.sawGenerating = true;
         state.inFlight.idleSince = null;
+        state.inFlight.stableResponsePolls = 0;
         return;
       }
 
       const responseAge = Date.now() - state.inFlight.sentAt;
       const assistantAppeared = getAssistantCount() > state.inFlight.assistantCountBefore;
       const hasResponseEvidence = state.inFlight.sawGenerating || assistantAppeared;
+      const responseText = getLatestAssistantResponseText();
 
-      if (responseAge < MIN_RESPONSE_AGE_MS || !hasResponseEvidence || !getComposer()) {
+      if (responseText) {
+        if (responseText === state.inFlight.lastResponseText) {
+          state.inFlight.stableResponsePolls = (state.inFlight.stableResponsePolls || 0) + 1;
+        } else {
+          state.inFlight.lastResponseText = responseText;
+          state.inFlight.stableResponsePolls = 0;
+          state.inFlight.idleSince = null;
+        }
+      } else {
+        state.inFlight.stableResponsePolls = 0;
+      }
+
+      const responseLooksComplete = hasCompletionAction() ||
+        (responseText && state.inFlight.stableResponsePolls >= RESPONSE_STABLE_POLLS);
+
+      if (
+        responseAge < MIN_RESPONSE_AGE_MS ||
+        !hasResponseEvidence ||
+        !responseLooksComplete ||
+        !getComposer()
+      ) {
         return;
       }
 
@@ -343,8 +456,9 @@
     if (widget?.isConnected) return widget;
 
     widget = document.createElement("div");
-    widget.id = "cqr-widget-host";
-    widget.style.cssText = "position:fixed;right:18px;bottom:18px;z-index:2147483647;";
+    widget.id = `cqr-widget-host-${RUNNER_NUMBER || "default"}`;
+    const runnerIndex = Math.max(0, (Number.parseInt(RUNNER_NUMBER, 10) || 1) - 1);
+    widget.style.cssText = `position:fixed;right:18px;bottom:${18 + runnerIndex * 52}px;z-index:2147483647;`;
     const shadow = widget.attachShadow({ mode: "open" });
     shadow.innerHTML = `
       <style>
@@ -422,7 +536,9 @@
         sentAt: Date.now(),
         assistantCountBefore: Math.max(0, getAssistantCount() - 1),
         sawGenerating: true,
-        idleSince: null
+        idleSince: null,
+        lastResponseText: "",
+        stableResponsePolls: 0
       };
     }
 
@@ -662,7 +778,10 @@
         await pause("Dijeda oleh pengguna");
       }
       if (message.type === "CQR_RESET") {
+        composerMissingSince = null;
+        pendingReplacement = null;
         state = makeIdleState();
+        await chrome.storage.local.remove(STORAGE_KEYS.pendingReplacement);
         await persistState();
       }
       sendResponse({ ok: true, state: publicState() });
