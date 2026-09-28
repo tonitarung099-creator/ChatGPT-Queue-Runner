@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Chat Queue Runner 02",
-  "version": "0.1.8",
-  "description": "Menjalankan antrean prompt di ChatGPT Web dan otomatis lanjut saat jawaban terhenti atau gagal.",
+  "version": "0.2.0",
+  "description": "Menjalankan antrean prompt ChatGPT dengan cancellation, recovery, outcome tracking, dan proteksi anti-duplikat.",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*", "http://127.0.0.1/*"],
   "action": {"default_title": "Chat Queue Runner 02", "default_popup": "popup.html"},
   "background": {"service_worker": "background.js"},
-  "content_scripts": [{"matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"], "js": ["interruption-bypass.js", "content.js"], "run_at": "document_idle"}]
+  "content_scripts": [{"matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"], "js": ["core.js", "interruption-bypass.js", "content.js"], "run_at": "document_idle"}]
 }

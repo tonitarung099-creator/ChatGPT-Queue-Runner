@@ -1,0 +1,11 @@
+{
+  "name": "chatgpt-queue-runner",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "generate": "node scripts/generate-runners.mjs",
+    "test": "node --test tests/*.test.js",
+    "validate": "node scripts/validate-packages.mjs",
+    "check": "npm run generate && npm test && npm run validate"
+  }
+}
