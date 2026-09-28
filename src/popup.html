@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat Queue Runner</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header><div><p class="eyebrow">CHATGPT AUTOMATION</p><h1 id="runnerName">Queue Runner</h1></div><span id="statusDot" class="status-dot" aria-hidden="true"></span></header>
+      <section class="status-card" aria-live="polite"><div><span class="label">Status</span><strong id="statusText">Siap</strong></div><span id="progressText">0/0 diproses</span></section>
+      <label for="queueInput">Daftar pekerjaan</label>
+      <textarea id="queueInput" rows="11" spellcheck="false" placeholder="Prompt pertama…&#10;Prompt kedua…&#10;Prompt ketiga…"></textarea>
+      <p class="hint">Satu baris adalah satu prompt. Draf tersimpan otomatis walau popup ditutup.</p>
+      <div class="settings">
+        <label for="delayInput">Jeda setelah jawaban selesai <span class="input-wrap"><input id="delayInput" type="number" min="3" max="60" value="6" /><span>detik</span></span></label>
+        <div class="limit-card"><span>Batas pekerjaan per sesi</span><strong>100 prompt</strong></div>
+      </div>
+      <p id="message" class="message" role="alert"></p>
+      <div class="actions"><button id="startButton" class="primary" type="button">Mulai</button><button id="pauseButton" type="button">Jeda</button><button id="resetButton" class="quiet" type="button">Reset</button></div>
+      <p class="privacy">Semua prompt dan status disimpan lokal di browser ini.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
